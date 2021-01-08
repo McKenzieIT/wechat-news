@@ -1,13 +1,13 @@
-import requests
-import threading
-import random
 import logging
-import json
-import time
+import random
+import re
+import threading
 from queue import Queue
-from bs4 import BeautifulSoup
 
-class UserAgent(object):
+import requests
+
+
+class UserAgent():
     __instance_lock = threading.Lock()
     __init_flag = False
     
@@ -15,7 +15,7 @@ class UserAgent(object):
         if self.__init_flag is False:
             print('init UserAgent')
             self.__agents_pool = list()
-            with open('./UserAgents/useragents.txt','r') as read_ob:
+            with open('Crawl/UserAgents/useragents.txt','r') as read_ob:
                 for line in read_ob.readlines():
                     self.__agents_pool.append(line.strip())
             self.__init_flag = True
@@ -31,7 +31,6 @@ class UserAgent(object):
     def get_useragent_randomly(self):
         return random.choice(self.__agents_pool)
     
-    
 
 class Crawl():
 
@@ -45,10 +44,11 @@ class Crawl():
             'Accept-Encoding': 'gzip, deflate',
         }
         self._proxies = [
-            {"http":"112.111.217.114:9999"},
-            {"http":"180.118.128.118:9000"},
-            {"http":"171.11.29.217:9999"},
-            {"http":"120.83.109.191:9999"}
+            {"http":"59.35.71.49:4230"},
+            {"http":"59.34.123.123:4287"},
+            {"http":"183.7.136.6:4230"},
+            {"http":"27.44.214.135:4265"},
+            {"http":"113.110.52.241:4245"}
         ]
         
     def request_get(self, url, **kwargs):
@@ -79,7 +79,7 @@ class Crawl():
         self.check_session()
         logging.info('scraping {}...'.format(url))
         try:
-            response = self._session.get(url, headers=self._headers, **kwargs)
+            response = self._session.get(url, headers=self._headers, proxies=random.choice(self._proxies), **kwargs)
             if response.status_code == 200:
                 return response
             logging.error('get invalid status code %s while scraping %s', response.status_code, url)
@@ -92,7 +92,7 @@ class Crawl():
         self.check_session()
         logging.info('scraping {}...'.format(url))
         try:
-            response = self._session.post(url, headers=self._headers, **kwargs)
+            response = self._session.post(url, headers=self._headers, proxies=random.choice(self._proxies), **kwargs)
             if response.status_code == 200:
                 return response
             logging.error('get invalid status code %s while scraping %s', response.status_code, url)
@@ -107,15 +107,29 @@ class Crawl():
     def set_session(self, session):
         self._session = session
         return True
+
+    def get_cookies(self):
+        if self._session is not None:
+            return self._session.cookies
+        else:
+            return False
     
-    def save_cookies(self, user):
+    def set_cookies(self, cookies):
+        if self._session is not None:
+            self._session.cookies = cookies
+            return True
+        else:
+            return False
+    
+    def save_cookies(self, response):
         cookieJar = requests.cookies.RequestsCookieJar()
-        for cookie in user.cookies:
+        for cookie in response.cookies:
             cookieJar.set(cookie.name,cookie.value)
-        for cookie in user.headers['Set-Cookie'].split(";"):
+        for cookie in response.headers['Set-Cookie'].split(";"):
             key = cookie.split('=')[0]
             value = cookie.split('=')[1]
             cookieJar.set(key,value)
+        self.set_cookies(cookieJar)
         return cookieJar
     
     def check_session(self):
@@ -126,4 +140,3 @@ class Crawl():
     def add_header(self, headers):
         for key, value in headers.items():
             self._headers[key] = value
-

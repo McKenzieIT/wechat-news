@@ -1,3 +1,5 @@
+import time
+
 def run_time(func):
     def wrapper(*args, **kw):
         start = time.time()
